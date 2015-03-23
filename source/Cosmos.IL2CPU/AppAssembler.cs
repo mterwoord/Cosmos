@@ -11,9 +11,13 @@ using Cosmos.Assembler;
 using Cosmos.Assembler.x86;
 using Cosmos.Assembler.x86._486AndUp;
 using Cosmos.Build.Common;
+using Cosmos.Common;
 using Cosmos.Debug.Common;
 using Cosmos.IL2CPU.Plugs;
 using Mono.Cecil;
+
+using SysReflection = System.Reflection;
+
 
 namespace Cosmos.IL2CPU
 {
@@ -27,7 +31,7 @@ namespace Cosmos.IL2CPU
         protected ILOp[] mILOpsHi = new ILOp[256];
         public bool ShouldOptimize = false;
         public DebugInfo DebugInfo { get; set; }
-        protected System.IO.TextWriter mLog;
+        protected TextWriter mLog;
         protected Dictionary<string, ModuleDefinition> mLoadedModules = new Dictionary<string, ModuleDefinition>();
         protected DebugInfo.SequencePoint[] mSequences = new DebugInfo.SequencePoint[0];
         public TraceAssemblies TraceAssemblies;
@@ -44,11 +48,16 @@ namespace Cosmos.IL2CPU
         protected Guid mCurrentMethodLabelEndGuid;
         protected Guid mCurrentMethodGuid;
 
-        public AppAssembler(int aComPort)
+        public AppAssembler(int aComPort, string assemblerLogFile)
         {
-            Assembler = new Cosmos.Assembler.Assembler(aComPort);
-            mLog = new System.IO.StreamWriter("Cosmos.Assembler.Log", false);
+            Assembler = CreateAssembler(aComPort);
+            mLog = new StreamWriter(assemblerLogFile, false);
             InitILOps();
+        }
+
+        protected virtual Assembler.Assembler CreateAssembler(int aComPort)
+        {
+            return new Cosmos.Assembler.Assembler(aComPort);
         }
 
         public void Dispose()
@@ -63,10 +72,6 @@ namespace Cosmos.IL2CPU
 
         protected void MethodBegin(MethodInfo aMethod)
         {
-            if (aMethod.MethodBase.GetFullName() == "SystemUInt64SystemCollectionsGenericList1SystemUInt64get_ItemSystemInt32")
-            {
-                Console.Write("");
-            }
             new Comment("---------------------------------------------------------");
             new Comment("Assembly: " + aMethod.MethodBase.DeclaringType.Assembly.FullName);
             new Comment("Type: " + aMethod.MethodBase.DeclaringType.ToString());
@@ -118,6 +123,7 @@ namespace Cosmos.IL2CPU
                 xMethodLabel = LabelName.Get(aMethod.MethodBase);
             }
             new Cosmos.Assembler.Label(xMethodLabel);
+            //Assembler.WriteDebugVideo("Method " + aMethod.UID);
 
             // We could use same GUID as MethodLabelStart, but its better to keep GUIDs unique globaly for items
             // so during debugging they can never be confused as to what they point to.
@@ -177,7 +183,7 @@ namespace Cosmos.IL2CPU
                         AssemblyFileID = DebugInfo.AssemblyGUIDs[aMethod.MethodBase.DeclaringType.Assembly],
                         DocumentID = DebugInfo.DocumentGUIDs[mSequences[0].Document.ToLower()],
 
-                        // Storing Line + Col as one item makes comparisons MUCH easier, otherwise we have to 
+                        // Storing Line + Col as one item makes comparisons MUCH easier, otherwise we have to
                         // check for things like col < start col but line > start line.
                         //
                         // () around << are VERY important.. + has precedence over <<
@@ -279,16 +285,27 @@ namespace Cosmos.IL2CPU
             new Comment("End Method: " + aMethod.MethodBase.Name);
 
             uint xReturnSize = 0;
-            var xMethInfo = aMethod.MethodBase as System.Reflection.MethodInfo;
+            var xMethInfo = aMethod.MethodBase as SysReflection.MethodInfo;
             if (xMethInfo != null)
             {
                 xReturnSize = ILOp.Align(ILOp.SizeOfType(xMethInfo.ReturnType), 4);
             }
-            if (aMethod.PlugMethod == null && !aMethod.IsInlineAssembler)
+            var xMethodLabel = ILOp.GetMethodLabel(aMethod);
+            if (aMethod.PlugMethod == null
+                && !aMethod.IsInlineAssembler)
             {
-                new Cosmos.Assembler.Label(ILOp.GetMethodLabel(aMethod) + EndOfMethodLabelNameNormal);
+                new Cosmos.Assembler.Label(xMethodLabel + EndOfMethodLabelNameNormal);
+
+                new Comment("Following code is for debugging. Adjust accordingly!");
+                new Mov
+                {
+                  DestinationRef = ElementReference.New("static_field__Cosmos_Core_INTs_mLastKnownAddress"),
+                  DestinationIsIndirect = true,
+                  SourceRef = ElementReference.New(xMethodLabel + EndOfMethodLabelNameNormal)
+                };
             }
-            new Mov { DestinationReg = Registers.ECX, SourceValue = 0 };
+
+          new Mov { DestinationReg = Registers.ECX, SourceValue = 0 };
             var xTotalArgsSize = (from item in aMethod.MethodBase.GetParameters()
                                   select (int)ILOp.Align(ILOp.SizeOfType(item.ParameterType), 4)).Sum();
             if (!aMethod.MethodBase.IsStatic)
@@ -306,7 +323,7 @@ namespace Cosmos.IL2CPU
             if (aMethod.PluggedMethod != null)
             {
                 xReturnSize = 0;
-                xMethInfo = aMethod.PluggedMethod.MethodBase as System.Reflection.MethodInfo;
+                xMethInfo = aMethod.PluggedMethod.MethodBase as SysReflection.MethodInfo;
                 if (xMethInfo != null)
                 {
                     xReturnSize = ILOp.Align(ILOp.SizeOfType(xMethInfo.ReturnType), 4);
@@ -342,7 +359,7 @@ namespace Cosmos.IL2CPU
                 }
                 // extra stack space is the space reserved for example when a "public static int TestMethod();" method is called, 4 bytes is pushed, to make room for result;
             }
-            var xLabelExc = ILOp.GetMethodLabel(aMethod) + EndOfMethodLabelNameException;
+            var xLabelExc = xMethodLabel + EndOfMethodLabelNameException;
             new Cosmos.Assembler.Label(xLabelExc);
             if (aMethod.MethodAssembler == null && aMethod.PlugMethod == null && !aMethod.IsInlineAssembler)
             {
@@ -376,7 +393,7 @@ namespace Cosmos.IL2CPU
             }
             if (DebugEnabled && StackCorruptionDetection)
             {
-                // if debugstub is active, emit a stack corruption detection. at this point EBP and ESP should have the same value. 
+                // if debugstub is active, emit a stack corruption detection. at this point EBP and ESP should have the same value.
                 // if not, we should somehow break here.
               new Mov {DestinationReg = Registers.EAX, SourceReg = RegistersEnum.ESP};
               new Mov { DestinationReg = Registers.EBX, SourceReg = RegistersEnum.EBP };
@@ -390,7 +407,7 @@ namespace Cosmos.IL2CPU
                 new Mov {DestinationRef = ElementReference.New("DebugStub_CallerEIP"), DestinationIsIndirect = true, SourceReg = RegistersEnum.EAX};
                 new Call { DestinationLabel = "DebugStub_SendStackCorruptionOccurred" };
                 new Halt();
-            } 
+            }
             new Cosmos.Assembler.Label(xLabelExc + "__2");
             new Pop { DestinationReg = Registers.EBP };
             var xRetSize = ((int)xTotalArgsSize) - ((int)xReturnSize);
@@ -444,25 +461,21 @@ namespace Cosmos.IL2CPU
             }
 
             MethodBegin(aMethod);
-            mLog.WriteLine("Method '{0}'", aMethod.MethodBase.GetFullName());
+            mLog.WriteLine("Method '{0}', ID = '{1}'", aMethod.MethodBase.GetFullName(), aMethod.UID);
             mLog.Flush();
             if (aMethod.MethodAssembler != null)
             {
-                mLog.WriteLine("Emitted using MethodAssembler", aMethod.MethodBase.GetFullName());
-                mLog.Flush();
                 var xAssembler = (AssemblerMethod)Activator.CreateInstance(aMethod.MethodAssembler);
                 xAssembler.AssembleNew(Assembler, aMethod.PluggedMethod);
             }
             else if (aMethod.IsInlineAssembler)
             {
-                mLog.WriteLine("Emitted using Inline MethodAssembler", aMethod.MethodBase.GetFullName());
-                mLog.Flush();
                 aMethod.MethodBase.Invoke("", new object[aMethod.MethodBase.GetParameters().Length]);
             }
             else
             {
                 // now emit the actual assembler code for this method.
-                
+
                 //Conditions under which we should emit an INT3 instead of a plceholder NOP:
                 /* - First instruction in a Method / Loop / If / Else etc.
                  *   -- In essence, whenever there is a opening {
@@ -476,14 +489,14 @@ namespace Cosmos.IL2CPU
                 bool emitINT3 = true;
                 DebugInfo.SequencePoint xPreviousSequencePoint = null;
                 var xCurrentGroup = new List<ILOpCode>();
-                ILOpCode.ILInterpretationDebugLine("Method: " + aMethod.MethodBase.GetFullName());
+                ILOpCode.ILInterpretationDebugLine(() => String.Format("Method: {0}", aMethod.MethodBase.GetFullName()));
                 foreach (var xRawOpcode in aOpCodes)
                 {
                     var xSP = mSequences.FirstOrDefault(q => q.Offset == xRawOpcode.Position && q.LineStart != 0xFEEFEE);
                     // detect if we're at a new statement.
                     if (xPreviousSequencePoint == null && xSP != null)
                     {
-                        
+
                     }
                     if (xSP != null && xCurrentGroup.Count > 0)
                     {
@@ -491,7 +504,7 @@ namespace Cosmos.IL2CPU
                         xCurrentGroup.Clear();
                         xPreviousSequencePoint = xSP;
                     }
-                    xCurrentGroup.Add(xRawOpcode);                    
+                    xCurrentGroup.Add(xRawOpcode);
                 }
                 if (xCurrentGroup.Count > 0)
                 {
@@ -523,7 +536,7 @@ namespace Cosmos.IL2CPU
         //private static bool mDebugStackErrors = true;
         private void EmitInstructions(MethodInfo aMethod, List<ILOpCode> aCurrentGroup, ref bool emitINT3)
         {
-            ILOpCode.ILInterpretationDebugLine("---- Group");
+            ILOpCode.ILInterpretationDebugLine(() => "---- Group");
             InterpretInstructionsToDetermineStackTypes(aCurrentGroup);
             BeforeEmitInstructions(aMethod, aCurrentGroup);
             var xFirstInstruction = true;
@@ -632,7 +645,7 @@ namespace Cosmos.IL2CPU
         }
 
         /// <summary>
-        /// This method takes care of "interpreting" the instructions per group (statement). This is necessary to 
+        /// This method takes care of "interpreting" the instructions per group (statement). This is necessary to
         /// reliably able to tell what sizes are involved in certain actions.
         /// </summary>
         /// <param name="aCurrentGroup"></param>
@@ -659,7 +672,7 @@ namespace Cosmos.IL2CPU
             var xGroupILByILOffset = aCurrentGroup.ToDictionary(i => i.Position);
             while (xNeedsInterpreting)
             {
-                ILOpCode.ILInterpretationDebugLine("--------- New Interpretation iteration (xIteration = {0})", xIteration);
+                ILOpCode.ILInterpretationDebugLine(() => String.Format("--------- New Interpretation iteration (xIteration = {0})", xIteration));
                 xIteration ++;
                 if (xIteration > 20)
                 {
@@ -772,7 +785,7 @@ namespace Cosmos.IL2CPU
                 DestinationValue = aValue
             };
         }
-        
+
         protected void Push(string aLabelName, bool isIndirect = false)
         {
             new Push
@@ -798,6 +811,11 @@ namespace Cosmos.IL2CPU
             };
         }
 
+        protected X86.IL.FieldInfo ResolveField(MethodInfo method, string fieldId)
+        {
+            return X86.IL.Ldflda.ResolveField(method.MethodBase.DeclaringType, fieldId);
+        }
+
         protected void Ldarg(MethodInfo aMethod, int aIndex)
         {
             X86.IL.Ldarg.DoExecute(Assembler, aMethod, (ushort)aIndex);
@@ -815,7 +833,17 @@ namespace Cosmos.IL2CPU
 
         protected void Ldflda(MethodInfo aMethod, string aFieldId)
         {
-            X86.IL.Ldflda.DoExecute(Assembler, aMethod, aMethod.MethodBase.DeclaringType, aFieldId, false);
+            X86.IL.Ldflda.DoExecute(Assembler, aMethod, aMethod.MethodBase.DeclaringType, aFieldId, false, false);
+        }
+
+        protected void Ldflda(MethodInfo aMethod, X86.IL.FieldInfo aFieldInfo)
+        {
+          X86.IL.Ldflda.DoExecute(Assembler, aMethod, aMethod.MethodBase.DeclaringType, aFieldInfo, false, false);
+        }
+
+        protected void Ldsflda(MethodInfo aMethod, X86.IL.FieldInfo aFieldInfo)
+        {
+          X86.IL.Ldsflda.DoExecute(Assembler, aMethod, aFieldInfo.Id, aMethod.PluggedMethod.MethodBase.DeclaringType, null);
         }
 
         protected int GetVTableEntrySize()
@@ -911,13 +939,16 @@ namespace Cosmos.IL2CPU
                         {
                             try
                             {
-                                var xMap = xType.GetInterfaceMap(xIntf);
-                                for (int k = 0; k < xMap.InterfaceMethods.Length; k++)
+                                if (!xIntf.IsGenericType)
                                 {
-                                    if (xMap.InterfaceMethods[k] == xMethodIntf)
+                                    var xMap = xType.GetInterfaceMap(xIntf);
+                                    for (int k = 0; k < xMap.InterfaceMethods.Length; k++)
                                     {
-                                        xActualMethod = xMap.TargetMethods[k];
-                                        break;
+                                        if (xMap.InterfaceMethods[k] == xMethodIntf)
+                                        {
+                                            xActualMethod = xMap.TargetMethods[k];
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -1202,11 +1233,6 @@ namespace Cosmos.IL2CPU
                     xParams = aFrom.MethodBase.GetParameters();
                 }
 
-                //if (aFrom.MethodBase.GetParameters().Length > 0 || !aFrom.MethodBase.IsStatic) {
-                //  Ldarg(aFrom, 0);
-                //  Pop();
-                //}
-
                 int xCurParamIdx = 0;
                 if (!aFrom.MethodBase.IsStatic)
                 {
@@ -1227,10 +1253,18 @@ namespace Cosmos.IL2CPU
 
                     if (xFieldAccessAttrib != null)
                     {
-                        // field access                                                                                        
+                        // field access
                         new Comment("Loading address of field '" + xFieldAccessAttrib.Name + "'");
-                        Ldarg(aFrom, 0);
-                        Ldflda(aFrom, xFieldAccessAttrib.Name);
+                        var xFieldInfo = ResolveField(aFrom, xFieldAccessAttrib.Name);
+                        if (xFieldInfo.IsStatic)
+                        {
+                            Ldsflda(aFrom, xFieldInfo);
+                        }
+                        else
+                        {
+                            Ldarg(aFrom, 0);
+                            Ldflda(aFrom, xFieldInfo);
+                        }
                     }
                     else
                     {
@@ -1269,13 +1303,15 @@ namespace Cosmos.IL2CPU
 
         public void EmitEntrypoint(MethodBase aEntrypoint)
         {
-            // at the time the datamembers for literal strings are created, the type id for string is not yet determined. 
+            // at the time the datamembers for literal strings are created, the type id for string is not yet determined.
             // for now, we fix this at runtime.
             new Cosmos.Assembler.Label(InitStringIDsLabel);
             new Push { DestinationReg = Registers.EBP };
             new Mov { DestinationReg = Registers.EBP, SourceReg = Registers.ESP };
             new Mov { DestinationReg = Registers.EAX, SourceRef = Cosmos.Assembler.ElementReference.New(ILOp.GetTypeIDLabel(typeof(String))), SourceIsIndirect = true };
             new Mov { DestinationRef = ElementReference.New("static_field__System_String_Empty"), DestinationIsIndirect = true, SourceRef = ElementReference.New(X86.IL.LdStr.GetContentsArrayName("")) };
+
+            var xMemberId = 0;
 
             foreach (var xDataMember in Assembler.DataMembers)
             {
@@ -1287,8 +1323,14 @@ namespace Cosmos.IL2CPU
                 {
                     continue;
                 }
+                if (xMemberId % 100 == 0)
+                {
+                    Assembler.WriteDebugVideo(".");
+                }
+                xMemberId ++;
                 new Mov { DestinationRef = Cosmos.Assembler.ElementReference.New(xDataMember.Name), DestinationIsIndirect = true, SourceReg = Registers.EAX };
             }
+            Assembler.WriteDebugVideo("Done");
             new Pop { DestinationReg = Registers.EBP };
             new Return();
 
@@ -1296,12 +1338,13 @@ namespace Cosmos.IL2CPU
             new Push { DestinationReg = Registers.EBP };
             new Mov { DestinationReg = Registers.EBP, SourceReg = Registers.ESP };
             new Call { DestinationLabel = InitVMTCodeLabel };
-            Cosmos.Assembler.Assembler.WriteDebugVideo("Initializing string IDs.");
+            Assembler.WriteDebugVideo("Initializing string IDs.");
             new Call { DestinationLabel = InitStringIDsLabel };
-
+            Assembler.WriteDebugVideo("Done initializing string IDs");
             // we now need to do "newobj" on the entry point, and after that, call .Start on it
             var xCurLabel = Cosmos.Assembler.Assembler.EntryPointName + ".CreateEntrypoint";
             new Cosmos.Assembler.Label(xCurLabel);
+            Assembler.WriteDebugVideo("Now create kernel class");
             X86.IL.Newobj.Assemble(Cosmos.Assembler.Assembler.CurrentInstance, null, null, xCurLabel, aEntrypoint.DeclaringType, aEntrypoint);
             xCurLabel = Cosmos.Assembler.Assembler.EntryPointName + ".CallStart";
             new Cosmos.Assembler.Label(xCurLabel);
@@ -1325,6 +1368,19 @@ namespace Cosmos.IL2CPU
             string xLabel = TmpPosLabel(aMethod, aOpCode);
             Assembler.CurrentIlLabel = xLabel;
             new Cosmos.Assembler.Label(xLabel);
+            if (aMethod.MethodBase.DeclaringType != typeof(VTablesImpl))
+            {
+                Assembler.EmitAsmLabels = false;
+                try
+                {
+                    //Assembler.WriteDebugVideo(String.Format("Method {0}:{1}.", aMethod.UID, aOpCode.Position.ToString("X")));
+                    //Assembler.WriteDebugVideo(xLabel);
+                }
+                finally
+                {
+                    Assembler.EmitAsmLabels = true;
+                }
+            }
 
             uint? xStackDifference = null;
 
@@ -1371,7 +1427,7 @@ namespace Cosmos.IL2CPU
             if (DebugEnabled && StackCorruptionDetection)
             {
                 // if debugstub is active, emit a stack corruption detection. at this point, the difference between EBP and ESP
-                // should be equal to the local variables sizes and the IL stack. 
+                // should be equal to the local variables sizes and the IL stack.
                 // if not, we should break here.
 
                 // first, calculate the expected difference
@@ -1383,7 +1439,7 @@ namespace Cosmos.IL2CPU
 
                 new Comment("Stack difference = " + xStackDifference);
 
-                // if debugstub is active, emit a stack corruption detection. at this point EBP and ESP should have the same value. 
+                // if debugstub is active, emit a stack corruption detection. at this point EBP and ESP should have the same value.
                 // if not, we should somehow break here.
                 new Mov { DestinationReg = Registers.EAX, SourceReg = RegistersEnum.ESP };
                 new Mov { DestinationReg = Registers.EBX, SourceReg = RegistersEnum.EBP };
@@ -1400,6 +1456,11 @@ namespace Cosmos.IL2CPU
                 new Halt();
                 new Assembler.Label(xLabel + ".StackCorruptionCheck_End");
 
+            }
+
+            if (xLabel == "SystemUInt32CosmosCorePlugsGCImplementionImplAllocNewObjectSystemUInt32.IL_0001")
+            {
+                //
             }
         }
 
@@ -1463,7 +1524,7 @@ namespace Cosmos.IL2CPU
                     if (TraceAssemblies == TraceAssemblies.User)
                     {
                         //TODO: Maybe an attribute that could be used to turn tracing on and off
-                        //TODO: This doesnt match Cosmos.Kernel exact vs Cosmos.Kernel., so a user 
+                        //TODO: This doesnt match Cosmos.Kernel exact vs Cosmos.Kernel., so a user
                         // could do Cosmos.KernelMine and it will fail. Need to fix this
                         if (aNamespace.StartsWith("Cosmos.Kernel", StringComparison.InvariantCultureIgnoreCase))
                         {
@@ -1507,7 +1568,7 @@ namespace Cosmos.IL2CPU
             var xMethodBase = methodBase;
             if (xMethodBase.IsGenericMethod)
             {
-                var xMethodInfo = (System.Reflection.MethodInfo)xMethodBase;
+                var xMethodInfo = (SysReflection.MethodInfo)xMethodBase;
                 xMethodBase = xMethodInfo.GetGenericMethodDefinition();
                 if (xMethodBase.IsGenericMethod)
                 {

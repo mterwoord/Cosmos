@@ -11,6 +11,8 @@ using SR = System.Reflection;
 using Cosmos.Assembler;
 using System.Reflection.Emit;
 using _MemberInfo = System.Runtime.InteropServices._MemberInfo;
+using SysReflection = System.Reflection;
+
 
 namespace Cosmos.IL2CPU
 {
@@ -38,14 +40,14 @@ namespace Cosmos.IL2CPU
         // List of asssemblies found during scan. We cannot use the list of loaded
         // assemblies because the loaded list includes compilers, etc, and also possibly
         // other unused assemblies. So instead we collect a list of assemblies as we scan.
-        protected List<Assembly> mUsedAssemblies = new List<Assembly>();
+        internal List<Assembly> mUsedAssemblies = new List<Assembly>();
 
         protected OurHashSet<_MemberInfo> mItems = new OurHashSet<_MemberInfo>();
         protected List<object> mItemsList = new List<object>();
         // Contains items to be scanned, both types and methods
         protected Queue<ScannerQueueItem> mQueue = new Queue<ScannerQueueItem>();
         // Virtual methods are nasty and constantly need to be rescanned for
-        // overriding methods in new types, so we keep track of them separately. 
+        // overriding methods in new types, so we keep track of them separately.
         // They are also in the main mItems and mQueue.
         protected HashSet<MethodBase> mVirtuals = new HashSet<MethodBase>();
 
@@ -101,10 +103,10 @@ namespace Cosmos.IL2CPU
               && xMemInfo.DeclaringType.FullName == "System.ThrowHelper"
               && xMemInfo.DeclaringType.Assembly.GetName().Name != "mscorlib")
             {
-                // System.ThrowHelper exists in MS .NET twice... 
+                // System.ThrowHelper exists in MS .NET twice...
                 // Its an internal class that exists in both mscorlib and system assemblies.
                 // They are separate types though, so normally the scanner scans both and
-                // then we get conflicting labels. MS included it twice to make exception 
+                // then we get conflicting labels. MS included it twice to make exception
                 // throwing code smaller. They are internal though, so we cannot
                 // reference them directly and only via finding them as they come along.
                 // We find it here, not via QueueType so we only check it here. Later
@@ -142,11 +144,11 @@ namespace Cosmos.IL2CPU
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine(message);
+                global::System.Diagnostics.Debug.WriteLine(message);
             }
         }
 
-        public void Execute(System.Reflection.MethodBase aStartMethod)
+        public void Execute(SysReflection.MethodBase aStartMethod)
         {
             if (aStartMethod == null)
             {
@@ -180,8 +182,8 @@ namespace Cosmos.IL2CPU
             // This why in the past we had repetitive scans.
             //
             // Now we focus on more passes, but simpler execution. In the end it should
-            // be eaiser to optmize and yield overall better performance. Most of the 
-            // passes should be low overhead versus an integrated system which often 
+            // be eaiser to optmize and yield overall better performance. Most of the
+            // passes should be low overhead versus an integrated system which often
             // would need to reiterate over items multiple times. So we do more loops on
             // with less repetitive analysis, instead of fewer loops but more repetition.
             //
@@ -294,13 +296,15 @@ namespace Cosmos.IL2CPU
                     mLogWriter.WriteLine("<html><body>");
                     foreach (var xList in mLogMap)
                     {
-                        mLogWriter.WriteLine("<hr>");
+                        var xLogItemText = LogItemText(xList.Key);
+
+                         mLogWriter.WriteLine("<hr>");
 
                         // Emit bookmarks above source, so when clicking links user doesn't need
                         // to constantly scroll up.
                         foreach (var xItem in xList.Value)
                         {
-                            mLogWriter.WriteLine("<a name=\"Item" + xBookmarks[xItem.Item].ToString() + "\"></a>");
+                            mLogWriter.WriteLine("<a name=\"Item" + xBookmarks[xItem.Item].ToString() + "_S\"></a>");
                         }
 
                         int xHref;
@@ -311,7 +315,8 @@ namespace Cosmos.IL2CPU
                         mLogWriter.Write("<p>");
                         if (xHref >= 0)
                         {
-                            mLogWriter.WriteLine("<a href=\"#Item" + xHref.ToString() + "\">");
+                            mLogWriter.WriteLine("<a href=\"#Item" + xHref.ToString() + "_S\">");
+                            mLogWriter.WriteLine("<a name=\"Item{0}\">", xHref);
                         }
                         if (xList.Key == null)
                         {
@@ -319,21 +324,22 @@ namespace Cosmos.IL2CPU
                         }
                         else
                         {
-                            mLogWriter.WriteLine(LogItemText(xList.Key));
+                            mLogWriter.WriteLine(xLogItemText);
                         }
                         if (xHref >= 0)
                         {
                             mLogWriter.Write("</a>");
+                            mLogWriter.Write("</a>");
                         }
-                        mLogWriter.WriteLine("</a></p>");
+                        mLogWriter.WriteLine("</p>");
 
                         mLogWriter.WriteLine("<ul>");
                         foreach (var xItem in xList.Value)
                         {
-                            mLogWriter.Write("<li>" + LogItemText(xItem.Item) + "</li>");
+                            mLogWriter.Write("<li><a href=\"#Item{1}\">{0}</a></li>", LogItemText(xItem.Item), xBookmarks[xItem.Item]);
 
                             mLogWriter.WriteLine("<ul>");
-                            mLogWriter.WriteLine("<li>" + xItem.SrcType + "</<li>");
+                            mLogWriter.WriteLine("<li>" + xItem.SrcType + "</li>");
                             mLogWriter.WriteLine("</ul>");
                         }
                         mLogWriter.WriteLine("</ul>");
@@ -379,7 +385,7 @@ namespace Cosmos.IL2CPU
             for (int i = 0; i < xParams.Length; i++)
             {
                 xParamTypes[i] = xParams[i].ParameterType;
-                Queue(xParamTypes[i], xMethodFullName, "Parameter");
+                Queue(xParamTypes[i], aMethod, "Parameter");
             }
             var xIsDynamicMethod = aMethod.DeclaringType == null;
             // Queue Types directly related to method
@@ -389,12 +395,12 @@ namespace Cosmos.IL2CPU
                 if (!xIsDynamicMethod)
                 {
                     // dont queue declaring types of dynamic methods either, those dont have a declaring type
-                    Queue(aMethod.DeclaringType, xMethodFullName, "Declaring Type");
+                    Queue(aMethod.DeclaringType, aMethod, "Declaring Type");
                 }
             }
-            if (aMethod is System.Reflection.MethodInfo)
+            if (aMethod is SysReflection.MethodInfo)
             {
-                Queue(((System.Reflection.MethodInfo)aMethod).ReturnType, xMethodFullName, "Return Type");
+                Queue(((SysReflection.MethodInfo)aMethod).ReturnType, aMethod, "Return Type");
             }
 
             // Scan virtuals
@@ -403,7 +409,7 @@ namespace Cosmos.IL2CPU
             {
                 // For virtuals we need to climb up the type tree
                 // and find the top base method. We then add that top
-                // node to the mVirtuals list. We don't need to add the 
+                // node to the mVirtuals list. We don't need to add the
                 // types becuase adding DeclaringType will already cause
                 // all ancestor types to be added.
 
@@ -431,11 +437,11 @@ namespace Cosmos.IL2CPU
                             }
                         }
                     }
-                    // We dont bother to add these to Queue, because we have to do a 
+                    // We dont bother to add these to Queue, because we have to do a
                     // full downlevel scan if its a new base virtual anyways.
                     if (xNewVirtMethod == null)
                     {
-                        // If its already in the list, we mark it null 
+                        // If its already in the list, we mark it null
                         // so we dont do a full downlevel scan.
                         if (mVirtuals.Contains(xVirtMethod))
                         {
@@ -451,7 +457,7 @@ namespace Cosmos.IL2CPU
                 // care of new additions.
                 if (xVirtMethod != null)
                 {
-                    Queue(xVirtMethod, xMethodFullName, "Virtual Base");
+                    Queue(xVirtMethod, aMethod, "Virtual Base");
                     mVirtuals.Add(xVirtMethod);
 
                     // List changes as we go, cant be foreach
@@ -469,7 +475,7 @@ namespace Cosmos.IL2CPU
                                     // "replace" a virtual above it?
                                     if (xNewMethod.IsVirtual)
                                     {
-                                        Queue(xNewMethod, xMethodFullName, "Virtual Downscan");
+                                        Queue(xNewMethod, aMethod, "Virtual Downscan");
                                     }
                                 }
                             }
@@ -536,22 +542,22 @@ namespace Cosmos.IL2CPU
                     {
                         if (xOpCode is ILOpCodes.OpMethod)
                         {
-                            Queue(((ILOpCodes.OpMethod)xOpCode).Value, xMethodFullName, "Call", sourceItem);
+                            Queue(((ILOpCodes.OpMethod)xOpCode).Value, aMethod, "Call", sourceItem);
                         }
                         else if (xOpCode is ILOpCodes.OpType)
                         {
-                            Queue(((ILOpCodes.OpType)xOpCode).Value, xMethodFullName, "OpCode Value");
+                            Queue(((ILOpCodes.OpType)xOpCode).Value, aMethod, "OpCode Value");
                         }
                         else if (xOpCode is ILOpCodes.OpField)
                         {
                             var xOpField = (ILOpCodes.OpField)xOpCode;
                             //TODO: Need to do this? Will we get a ILOpCodes.OpType as well?
-                            Queue(xOpField.Value.DeclaringType, xMethodFullName, "OpCode Value");
+                            Queue(xOpField.Value.DeclaringType, aMethod, "OpCode Value");
                             if (xOpField.Value.IsStatic)
                             {
                                 //TODO: Why do we add static fields, but not instance?
                                 // AW: instance fields are "added" always, as part of a type, but for static fields, we need to emit a datamember
-                                Queue(xOpField.Value, xMethodFullName, "OpCode Value");
+                                Queue(xOpField.Value, aMethod, "OpCode Value");
                             }
                         }
                         else if (xOpCode is ILOpCodes.OpToken)
@@ -559,16 +565,16 @@ namespace Cosmos.IL2CPU
                             var xTokenOp = (ILOpCodes.OpToken)xOpCode;
                             if (xTokenOp.ValueIsType)
                             {
-                                Queue(xTokenOp.ValueType, xMethodFullName, "OpCode Value");
+                                Queue(xTokenOp.ValueType, aMethod, "OpCode Value");
                             }
                             if (xTokenOp.ValueIsField)
                             {
-                                Queue(xTokenOp.ValueField.DeclaringType, xMethodFullName, "OpCode Value");
+                                Queue(xTokenOp.ValueField.DeclaringType, aMethod, "OpCode Value");
                                 if (xTokenOp.ValueField.IsStatic)
                                 {
                                     //TODO: Why do we add static fields, but not instance?
                                     // AW: instance fields are "added" always, as part of a type, but for static fields, we need to emit a datamember
-                                    Queue(xTokenOp.ValueField, xMethodFullName, "OpCode Value");
+                                    Queue(xTokenOp.ValueField, aMethod, "OpCode Value");
                                 }
                             }
                         }
@@ -580,14 +586,14 @@ namespace Cosmos.IL2CPU
         protected void ScanType(Type aType)
         {
             // Add immediate ancestor type
-            // We dont need to crawl up farther, when the BaseType is scanned 
+            // We dont need to crawl up farther, when the BaseType is scanned
             // it will add its BaseType, and so on.
             if (aType.BaseType != null)
             {
                 Queue(aType.BaseType, aType, "Base Type");
             }
             // Queue static ctors
-            // We always need static ctors, else the type cannot 
+            // We always need static ctors, else the type cannot
             // be created.
             foreach (var xCctor in aType.GetConstructors(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
             {
@@ -598,7 +604,7 @@ namespace Cosmos.IL2CPU
             }
 
             // For each new type, we need to scan for possible new virtuals
-            // in our new type if its a descendant of something in 
+            // in our new type if its a descendant of something in
             // mVirtuals.
             foreach (var xVirt in mVirtuals)
             {
@@ -627,7 +633,7 @@ namespace Cosmos.IL2CPU
                 }
                 if (!aType.IsGenericParameter && xVirt.DeclaringType.IsInterface)
                 {
-                    if (aType.GetInterfaces().Contains(xVirt.DeclaringType))
+                  if ((!aType.IsInterface) && (aType.GetInterfaces().Contains(xVirt.DeclaringType)))
                     {
                         var xIntfMapping = aType.GetInterfaceMap(xVirt.DeclaringType);
                         if (xIntfMapping.InterfaceMethods != null && xIntfMapping.TargetMethods != null)
@@ -649,7 +655,7 @@ namespace Cosmos.IL2CPU
             while (mQueue.Count > 0)
             {
                 var xItem = mQueue.Dequeue();
-                // Check for MethodBase first, they are more numerous 
+                // Check for MethodBase first, they are more numerous
                 // and will reduce compares
                 if (xItem.Item is MethodBase)
                 {
@@ -818,7 +824,7 @@ namespace Cosmos.IL2CPU
         {
             // It would be nice to keep DebugInfo output into assembler only but
             // there is so much info that is available in scanner that is needed
-            // or can be used in a more efficient manner. So we output in both 
+            // or can be used in a more efficient manner. So we output in both
             // scanner and assembler as needed.
             mAsmblr.DebugInfo.AddAssemblies(mUsedAssemblies);
         }

@@ -1,4 +1,8 @@
 ; 4-column space indentation
+
+[ILScanner.cs]
+indent_size = 4
+
 [ILOpCode.cs]
 indent_size = 2
 
@@ -10,3 +14,15 @@ indent_size = 2
 
 [IL/*.cs]
 indent_size = 2
+
+[AppAssembler.cs]
+indent_size = 4
+
+[CompilerExtensionBase.cs]
+indent_size = 4
+
+[CompilerEngine.cs]
+indent_size = 4
+
+[CompilerExtensionAttribute.cs]
+indent_size = 4

@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Windows.Markup;
+using Cosmos.Assembler.x86;
 
 namespace Cosmos.IL2CPU.ILOpCodes {
   public class OpType: ILOpCode
   {
     public readonly Type Value;
 
-    public OpType(Code aOpCode, int aPos, int aNextPos, Type aValue, System.Reflection.ExceptionHandlingClause aCurrentExceptionHandler)
+    public OpType(Code aOpCode, int aPos, int aNextPos, Type aValue, ExceptionHandlingClause aCurrentExceptionHandler)
       : base(aOpCode, aPos, aNextPos, aCurrentExceptionHandler)
     {
       Value = aValue;
@@ -37,8 +40,12 @@ namespace Cosmos.IL2CPU.ILOpCodes {
           return 1;
         case Code.Constrained:
           return 0;
+        case Code.Unbox_Any:
+             return 1;
+        case Code.Unbox:
+             return 1;
         default:
-          throw new NotImplementedException("OpCode '" + OpCode + "' not implemented!");
+          throw new NotImplementedException("OpCode '" + OpCode + "' not implemented! Encountered in method " + aMethod.ToString());
       }
     }
 
@@ -64,6 +71,10 @@ namespace Cosmos.IL2CPU.ILOpCodes {
           return 1;
         case Code.Constrained:
           return 0;
+        case Code.Unbox_Any:
+          return 1;
+        case Code.Unbox:
+          return 1;
         default:
           throw new NotImplementedException("OpCode '" + OpCode + "' not implemented!");
       }
@@ -91,6 +102,12 @@ namespace Cosmos.IL2CPU.ILOpCodes {
           {
             StackPushTypes[0] = Value;
           }
+          return;
+        case Code.Unbox_Any:
+          StackPushTypes[0] = Value;
+          return;
+        case Code.Unbox:
+          StackPushTypes[0] = Value;
           return;
         case Code.Newarr:
           StackPushTypes[0] = Value.MakeArrayType();
@@ -128,7 +145,7 @@ namespace Cosmos.IL2CPU.ILOpCodes {
     }
 
     /// <summary>
-    /// Based on updated StackPopTypes, try to update 
+    /// Based on updated StackPopTypes, try to update
     /// </summary>
     protected override void DoInterpretStackTypes(ref bool aSituationChanged)
     {

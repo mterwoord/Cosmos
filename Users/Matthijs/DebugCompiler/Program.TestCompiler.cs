@@ -5,7 +5,9 @@ using System.Linq;
 using System.Runtime;
 using System.Text;
 using System.Threading;
+using Cosmos.Build.Common;
 using Cosmos.Build.MSBuild;
+using Cosmos.IL2CPU;
 using Microsoft.Build.Framework;
 using System.Diagnostics;
 using System.Data.SQLite;
@@ -16,27 +18,36 @@ namespace DebugCompiler
 {
     internal class Program
     {
-        //public const string CosmosRoot = @"e:\Cosmos";
-        public const string CosmosRoot = @"e:\OpenSOurce\Cosmos";
+        public const string CosmosRoot = @"c:\data\sources\OpenSource\Cosmos";
+
+        //public const string CosmosRoot = @"C:\Users\Emile\Source\Repos\Cosmos";
+        //public const string CosmosRoot = @"c:\Development\Cosmos";
         //public const string CosmosRoot = @"C:\Users\Huge\Documents\Visual Studio 2010\Projects\IL2CPU";
 
-        private const string KernelFile = CosmosRoot + @"\Users\Kudzu\Breakpoints\bin\Debug\Playground.Kudzu.BreakpointsKernel.dll";
-        private const string OutputFile = CosmosRoot + @"\Users\Kudzu\Breakpoints\bin\Debug\Kudzu.Breakpoints.asm";
-        //private const string KernelFile = CosmosRoot + @"\source2\Users\Matthijs\Playground\bin\Debug\Playground.dll";
-        //private const string OutputFile = CosmosRoot + @"\source2\Users\Matthijs\Playground\bin\Debug\Playground.asm";
+        //private const string KernelFile = CosmosRoot + @"\Users\Sentinel209\SentinelKernel\bin\Debug\SentinelKernel.dll";
+        //private const string OutputFile = CosmosRoot + @"\Users\Sentinel209\SentinelKernel\bin\Debug\SentinelKernelBoot.asm";
+        //private const string KernelFile = CosmosRoot + @"\Users\Matthijs\Playground\bin\Debug\Playground.dll";
+        //private const string OutputFile = CosmosRoot + @"\Users\Matthijs\Playground\bin\Debug\PlaygroundBoot.asm";
+        //private const string KernelFile = CosmosRoot + @"\Demos\Guess\bin\Debug\GuessKernel.dll";
+        //private const string OutputFile = CosmosRoot + @"\Demos\Guess\bin\Debug\GuessKernelBoot.asm";
+        private const string KernelFile = @"c:\Data\Sources\OpenSource\Edison\CosmosEdison\Sources\Playgrounds.Matthijs\bin\Debug\Playgrounds.Matthijs.dll";
+        private const string OutputFile = @"c:\Data\Sources\OpenSource\Edison\CosmosEdison\Sources\Playgrounds.Matthijs\bin\Debug\Playgrounds.MatthijsBoot.asm";
+        //private const string KernelFile = CosmosRoot + @"\Users\Emile\TestBed\TestBed\bin\Debug\TestBed.dll";
+        //private const string OutputFile = CosmosRoot + @"\Users\Emile\TestBed\TestBed\bin\Debug\TestBedBoot.asm";
 
         private static void Main(string[] args)
         {
-            Console.SetOut(new StreamWriter("out", false));
+            //Console.SetOut(new StreamWriter("out", false));
 
             var xSW = Stopwatch.StartNew();
             try
             {
-                var xTask = new IL2CPUTask();
+                CosmosPaths.DebugStubSrc = Path.Combine(CosmosRoot, "source", "Cosmos.Debug.DebugStub");
+                var xTask = new CompilerEngine();
                 xTask.DebugEnabled = true;
-                xTask.StackCorruptionDetectionEnabled = false;
+                xTask.StackCorruptionDetectionEnabled = true;
                 xTask.DebugMode = "Source";
-                xTask.TraceAssemblies = "User";
+                xTask.TraceAssemblies = "All";
                 xTask.DebugCom = 1;
                 xTask.UseNAsm = true;
                 xTask.OutputFilename = OutputFile;
@@ -46,12 +57,12 @@ namespace DebugCompiler
                 xTask.References = GetReferences();
                 xTask.OnLogError = (m) => Console.WriteLine("Error: {0}", m);
                 xTask.OnLogWarning = (m) => Console.WriteLine("Warning: {0}", m);
-                xTask.OnLogMessage = (m) => Console.WriteLine("Message: {0}", m);
-                xTask.OnLogException = (m) =>
-                {
-                    Console.WriteLine("Exception: {0}", m.ToString());
-                    //Console.ReadLine();
-                };
+                xTask.OnLogMessage = (m) =>
+                                     {
+                                         Console.WriteLine("Message: {0}", m);
+                                     };
+                xTask.OnLogException = (m) => Console.WriteLine("Exception: {0}", m.ToString());
+
                 if (xTask.Execute())
                 {
                     Console.WriteLine("Executed OK");
@@ -73,6 +84,7 @@ namespace DebugCompiler
             Console.WriteLine("Run took {0}", xSW.Elapsed);
             Console.WriteLine("Generated {0} Guids", DebugInfo.mLastGuid);
             Console.Out.Flush();
+            Console.ReadKey();
         }
 
         //static void Main()
@@ -95,83 +107,17 @@ namespace DebugCompiler
             Console.WriteLine("SQL: {0}", e.Message);
         }
 
-        private static ITaskItem[] GetReferences()
+        private static string[] GetReferences()
         {
-            return new ITaskItem[]
+            return new string[]
             {
-                new TaskItemImpl(KernelFile),
-                new TaskItemImpl(CosmosRoot + @"\source\Cosmos.Core.Plugs\bin\x86\Debug\Cosmos.Core.Plugs.dll"),
-                new TaskItemImpl(CosmosRoot + @"\source\Cosmos.Debug.Kernel.Plugs\bin\x86\Debug\Cosmos.Debug.Kernel.Plugs.dll"),
-                new TaskItemImpl(CosmosRoot + @"\source\Cosmos.HAL\bin\x86\Debug\Cosmos.HAL.dll"),
-                new TaskItemImpl(CosmosRoot + @"\source\Cosmos.System.Plugs\bin\x86\Debug\Cosmos.System.Plugs.dll"),
+                KernelFile,
+                CosmosRoot + @"\source\Cosmos.Core.Plugs\bin\x86\Debug\Cosmos.Core.Plugs.dll",
+                CosmosRoot + @"\source\Cosmos.Debug.Kernel.Plugs\bin\x86\Debug\Cosmos.Debug.Kernel.Plugs.dll",
+                CosmosRoot + @"\source\Cosmos.HAL\bin\x86\Debug\Cosmos.HAL.dll",
+                CosmosRoot + @"\source\Cosmos.System.Plugs\bin\x86\Debug\Cosmos.System.Plugs.dll",
+                CosmosRoot + @"\Users\Sentinel209\SentinelSystemLib\bin\Debug\SentinelSystemLib.dll",
             };
-        }
-
-        private class TaskItemImpl : ITaskItem
-        {
-            private string path;
-
-            public TaskItemImpl(string path)
-            {
-                this.path = path;
-            }
-
-            public System.Collections.IDictionary CloneCustomMetadata()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void CopyMetadataTo(ITaskItem destinationItem)
-            {
-                throw new NotImplementedException();
-            }
-
-            public string GetMetadata(string metadataName)
-            {
-                if (metadataName == "FullPath")
-                {
-                    return path;
-                }
-                throw new NotImplementedException();
-            }
-
-            public string ItemSpec
-            {
-                get
-                {
-                    throw new NotImplementedException();
-                }
-                set
-                {
-                    throw new NotImplementedException();
-                }
-            }
-
-            public int MetadataCount
-            {
-                get
-                {
-                    return MetadataNames.Count;
-                }
-            }
-
-            public System.Collections.ICollection MetadataNames
-            {
-                get
-                {
-                    return new String[] { "FullPath" };
-                }
-            }
-
-            public void RemoveMetadata(string metadataName)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void SetMetadata(string metadataName, string metadataValue)
-            {
-                throw new NotImplementedException();
-            }
         }
     }
 }

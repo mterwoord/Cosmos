@@ -1,5 +1,5 @@
 ; Do NOT change this next line in Dev Kit
-#define ChangeSetVersion "105955"
+#define ChangeSetVersion "20150130"
 
 #ifndef BuildConfiguration   
 ; Currently we dont use "UserKit" but this allows us to test/compile from Inno
@@ -156,10 +156,14 @@ Source: ".\Resources\Dependencies\cecil\Mono.Cecil.Pdb.pdb"; DestDir: "{app}\Bui
 Source: ".\Build\Tools\*.exe"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\Tools\NAsm\*.exe"; DestDir: "{app}\Build\Tools\NAsm"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\Tools\Cygwin\*"; DestDir: "{app}\Build\Tools\cygwin"; Flags: ignoreversion uninsremovereadonly overwritereadonly
+Source: ".\Build\Tools\mkisofs\*"; DestDir: "{app}\Build\Tools\mkisofs"; Flags: ignoreversion uninsremovereadonly overwritereadonly
+Source: ".\Build\VSIP\*.dll"; DestDir: "{app}\Build\IL2CPU"; Flags: ignoreversion ignoreversion uninsremovereadonly
+Source: ".\Build\VSIP\*.exe"; DestDir: "{app}\Build\IL2CPU"; Flags: ignoreversion ignoreversion uninsremovereadonly
+Source: ".\Build\VSIP\*.pdb"; DestDir: "{app}\Build\IL2CPU"; Flags: ignoreversion ignoreversion uninsremovereadonly
+
 ;
 Source: ".\Build\VSIP\Cosmos.Deploy.USB.exe"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\VSIP\Cosmos.Build.Common.dll"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
-Source: ".\Build\VSIP\Mosa.Utility.IsoImage.dll"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Resources\Dependencies\Dapper\*.*"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\VSIP\System.Data.SQLite.dll"; DestDir: "{app}\Build\Tools"; Flags: ignoreversion uninsremovereadonly
 ;
@@ -206,7 +210,7 @@ Source: ".\Build\VSIP\Cosmos.*"; DestDir: "{app}\Build\VSIP\"; Flags: ignorevers
 Source: ".\Build\VSIP\Cosmos.IL2CPU.*"; DestDir: "{app}\Build\VSIP\"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\VSIP\corapi.*"; DestDir: "{app}\Build\VSIP\"; Flags: ignoreversion uninsremovereadonly
 Source: ".\Build\VSIP\raw.*"; DestDir: "{app}\Build\VSIP\"; Flags: ignoreversion uninsremovereadonly
-Source: ".\Resources\Dependencies\Mosa\Mosa.Utility.IsoImage.dll"; DestDir: "{app}\Build\VSIP\"; Flags: ignoreversion uninsremovereadonly
+;Source: ".\Resources\Dependencies\Mosa\Mosa.Utility.IsoImage.dll"; DestDir: "{app}\Build\VSIP\"; Flags: ignoreversion uninsremovereadonly
 
 ; VMware
 Source: ".\Build\VMware\*"; DestDir: "{app}\Build\VMware"; Flags: ignoreversion uninsremovereadonly overwritereadonly recursesubdirs
@@ -359,6 +363,9 @@ Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{ce2a2d0f-
 Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{a64d0fcc-8dcc-439a-9b16-3c43128aad51}; ValueType: none; Flags: uninsdeletekey
 Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{a64d0fcc-8dcc-439a-9b16-3c43128aad51}; ValueType: string; ValueData: {{a82b45e9-2a89-43bd-925d-c7f0edd212aa}
 Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{a64d0fcc-8dcc-439a-9b16-3c43128aad51}; ValueName: Name; ValueType: string; ValueData: Cosmos.VS.Windows.StackTW
+Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{681a4da7-ba11-4c26-80a9-b39734a95b1c}; ValueType: none; Flags: uninsdeletekey
+Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{681a4da7-ba11-4c26-80a9-b39734a95b1c}; ValueType: string; ValueData: {{a82b45e9-2a89-43bd-925d-c7f0edd212aa}
+Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\ToolWindows\{{681a4da7-ba11-4c26-80a9-b39734a95b1c}; ValueName: Name; ValueType: string; ValueData: Cosmos.VS.Windows.ConsoleTW
 
 ; mark our msbuild file as safe
 Root: HKLM; SubKey: Software\Microsoft\VisualStudio\12.0\MSBuild\SafeImports; ValueType: string; ValueName: Cosmos1; ValueData: {pf32}\MSBuild\Cosmos\Cosmos.targets; Flags: uninsdeletevalue
@@ -393,6 +400,7 @@ Root: HKLM; Subkey: Software\Microsoft\VisualStudio\12.0\Languages\Language Serv
 
 Root: HKLM; Subkey: Software\Microsoft\VisualStudio\12.0\Services\{{3fb852ed-3562-3da4-98dc-55759744328c}; ValueType: string; ValueData: {{e2ce86d3-fb0b-43ad-938a-5bcdd087ea2d}
 Root: HKLM; Subkey: Software\Microsoft\VisualStudio\12.0\Services\{{3fb852ed-3562-3da4-98dc-55759744328c}; ValueName: Name; ValueType: string; ValueData: X# Language Service
+
 
 [Run]
 ; Forces VS to merge the resource metadata that describes menus, toolbars, and command groups from all VSPackages available.

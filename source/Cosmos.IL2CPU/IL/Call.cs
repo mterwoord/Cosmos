@@ -3,7 +3,7 @@ using Cosmos.IL2CPU.ILOpCodes;
 // using System.Collections.Generic;
 // using System.IO;
 // using System.Linq;
-// 
+//
 // using IL2CPU=Cosmos.IL2CPU;
 using CPU = Cosmos.Assembler.x86;
 using CPUx86 = Cosmos.Assembler.x86;
@@ -12,9 +12,9 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.IO;
 using Cosmos.Assembler;
-// using System.Reflection;
-// using Cosmos.IL2CPU.X86;
-// using Cosmos.IL2CPU.Compiler;
+
+using SysReflection = System.Reflection;
+
 
 namespace Cosmos.IL2CPU.X86.IL {
   [Cosmos.IL2CPU.OpCode(ILOpCode.Code.Call)]
@@ -35,8 +35,8 @@ namespace Cosmos.IL2CPU.X86.IL {
     }
 
     public static uint GetStackSizeToReservate(MethodBase aMethod) {
-      
-      var xMethodInfo = aMethod as System.Reflection.MethodInfo;
+
+      var xMethodInfo = aMethod as SysReflection.MethodInfo;
       uint xReturnSize = 0;
       if (xMethodInfo != null) {
         xReturnSize = SizeOfType(xMethodInfo.ReturnType);
@@ -59,7 +59,7 @@ namespace Cosmos.IL2CPU.X86.IL {
       return 0;
     }
 
-	private static int GetNativePointerSize(System.Reflection.MethodInfo xMethodInfo)
+	private static int GetNativePointerSize(SysReflection.MethodInfo xMethodInfo)
 	{
 		// old code, which goof up everything for structs
 		//return (int)Align(SizeOfType(xMethodInfo.DeclaringType), 4);
@@ -74,14 +74,15 @@ namespace Cosmos.IL2CPU.X86.IL {
 
     public static void DoExecute(Cosmos.Assembler.Assembler Assembler, MethodInfo aCurrentMethod, MethodBase aTargetMethod, ILOpCode aCurrent, string currentLabel, bool debugEnabled)
     {
-        DoExecute(Assembler, aCurrentMethod, aTargetMethod, aCurrent, currentLabel, ILOp.GetLabel(aCurrentMethod, aCurrent.NextPosition), debugEnabled);
+      DoExecute(Assembler, aCurrentMethod, aTargetMethod, aCurrent, currentLabel, ILOp.GetLabel(aCurrentMethod, aCurrent.NextPosition), debugEnabled);
     }
+
     public static void DoExecute(Cosmos.Assembler.Assembler Assembler, MethodInfo aCurrentMethod, MethodBase aTargetMethod, ILOpCode aCurrent, string currentLabel, string nextLabel, bool debugEnabled) {
       //if (aTargetMethod.IsVirtual) {
       //  Callvirt.DoExecute(Assembler, aCurrentMethod, aTargetMethod, aTargetMethodUID, aCurrentPosition);
       //  return;
       //}
-      var xMethodInfo = aTargetMethod as System.Reflection.MethodInfo;
+      var xMethodInfo = aTargetMethod as SysReflection.MethodInfo;
 
       // mTargetMethodInfo = GetService<IMetaDataInfoService>().GetMethodInfo(mMethod
       //   , mMethod, mMethodDescription, null, mCurrentMethodInfo.DebugMode);
@@ -148,23 +149,5 @@ namespace Cosmos.IL2CPU.X86.IL {
 	  }
 
     }
-
-      public static void DoNullReferenceCheck(Assembler.Assembler assembler, bool debugEnabled, uint stackOffsetToCheck)
-      {
-          if (debugEnabled)
-          {
-              new CPUx86.Compare {DestinationReg = CPU.RegistersEnum.ESP, DestinationDisplacement = (int) stackOffsetToCheck, DestinationIsIndirect = true, SourceValue = 0};
-              new CPUx86.ConditionalJump {DestinationLabel = ".AfterNullCheck", Condition = CPU.ConditionalTestEnum.NotEqual};
-              new CPUx86.ClrInterruptFlag();
-              // don't remove the call. It seems pointless, but we need it to retrieve the EIP value
-              new CPUx86.Call {DestinationLabel = ".NullCheck_GetCurrAddress"};
-              new Assembler.Label(".NullCheck_GetCurrAddress");
-              new CPUx86.Pop {DestinationReg = CPU.RegistersEnum.EAX};
-              new CPUx86.Mov {DestinationRef = ElementReference.New("DebugStub_CallerEIP"), DestinationIsIndirect = true, SourceReg = CPU.RegistersEnum.EAX};
-              new CPUx86.Call {DestinationLabel = "DebugStub_SendNullReferenceOccurred"};
-              new CPUx86.Halt();
-              new Label(".AfterNullCheck");
-          }
-      }
   }
 }

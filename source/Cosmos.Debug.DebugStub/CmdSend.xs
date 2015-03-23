@@ -2,16 +2,16 @@
 
 function SendRegisters {
 	// Send the actual started signal
-    AL = #Ds2Vs_Registers 
+    AL = #Ds2Vs_Registers
 	ComWriteAL()
 
     ESI = .PushAllPtr
     ECX = 32
     ComWriteX()
-    
+
 	ESI = @.CallerESP
     ComWrite32()
-    
+
 	ESI = @.CallerEIP
     ComWrite32()
 }
@@ -28,6 +28,34 @@ function SendFrame {
     ESI + 8
     ECX = 32
     ComWriteX()
+}
+
+// AL contains channel
+// BL contains command
+// ESI contains data start pointer
+// ECX contains number of bytes to send as command data
+function SendCommandOnChannel{
+  +All
+    ComWriteAL()
+  -All
+
+  AL = BL
+
+  +All
+    ComWriteAL()
+  -All
+
+  +All
+    EAX = ECX
+    ComWriteEAX()
+  -All
+
+  // now ECX contains size of data (count)
+    // ESI contains address
+	while ECX != 0 {
+		ComWrite8()
+		ECX--
+	}
 }
 
 function SendStack {
@@ -60,7 +88,7 @@ function SendMethodContext {
     ComWriteAL()
 
     ESI = .CallerEBP
-    
+
 	// offset relative to ebp
     // size of data to send
     ComReadEAX()
@@ -70,7 +98,7 @@ function SendMethodContext {
 
     // now ECX contains size of data (count)
     // ESI contains relative to EBP
-    
+
 	while ECX != 0 {
 		ComWrite8()
 		ECX--
@@ -93,7 +121,7 @@ function SendMemory {
 
 	AL = #Ds2Vs_MemoryData
     ComWriteAL()
-	
+
     ComReadEAX()
     ESI = EAX
     ComReadEAX()
@@ -129,11 +157,12 @@ function SendTrace {
 // Output: None
 // Modifies: EAX, ECX, EDX, ESI
 function SendText {
+	+All
 	// Write the type
     AL = #Ds2Vs_Message
     ComWriteAL()
 
-    // Write Length
+	// Write Length
     ESI = EBP
     ESI + 12
     ECX = ESI[0]
@@ -142,13 +171,24 @@ function SendText {
     // Address of string
     ESI = EBP[8]
 WriteChar:
-    if ECX = 0 return
+    if ECX = 0 goto Finalize
     ComWrite8()
     ECX--
     // We are storing as 16 bits, but for now I will transmit 8 bits
     // So we inc again to skip the 0
     ESI++
-    goto WriteChar
+	goto WriteChar
+
+    ////test
+    // Write Length
+    //ESI = EBP
+    //ESI + 12
+    //ECX = ESI[0]
+	//
+    //// Address of string
+    //ESI = EBP[8]
+Finalize:
+	-All
 }
 
 // Input: Stack

@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-
+using SysReflection = System.Reflection;
 using CPUx86 = Cosmos.Assembler.x86;
 using Cosmos.Assembler;
 
@@ -31,12 +31,12 @@ namespace Cosmos.IL2CPU.X86.IL {
       new Comment("Size: " + xFieldInfo.Size);
 
       uint xRoundedSize = Align(xSize, 4);
+      DoNullReferenceCheck(aAssembler, debugEnabled, xRoundedSize);
 
       new CPUx86.Mov { DestinationReg = CPUx86.Registers.ECX, SourceReg = CPUx86.Registers.ESP, SourceIsIndirect = true, SourceDisplacement = (int)xRoundedSize };
         if (debugEnabled)
         {
             new CPUx86.Push {DestinationReg = CPUx86.RegistersEnum.ECX};
-            Call.DoNullReferenceCheck(aAssembler, debugEnabled, 0);
             new CPUx86.Pop {DestinationReg = CPUx86.RegistersEnum.ECX};
         }
       new CPUx86.Add { DestinationReg = CPUx86.Registers.ECX, SourceValue = (uint)(xActualOffset) };
@@ -84,7 +84,7 @@ namespace Cosmos.IL2CPU.X86.IL {
       new CPUx86.Add { DestinationReg = CPUx86.Registers.ESP, SourceValue = 4 };
     }
 
-    public static void DoExecute(Cosmos.Assembler.Assembler aAssembler, MethodInfo aMethod, System.Reflection.FieldInfo aField, bool debugEnabled)
+    public static void DoExecute(Cosmos.Assembler.Assembler aAssembler, MethodInfo aMethod, SysReflection.FieldInfo aField, bool debugEnabled)
     {
       bool xNeedsGC = aField.DeclaringType.IsClass && !aField.DeclaringType.IsValueType;
 

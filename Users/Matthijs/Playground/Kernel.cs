@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Cosmos.Hardware;
-using Cosmos.Hardware.Drivers.PCI.Network;
-using Cosmos.System.Network;
+using PlaygroundSystem;
 using Sys = Cosmos.System;
 
 namespace Playground
 {
-    public class Kernel : Sys.Kernel
+    public class Kernel : OurKernel
     {
         protected override void BeforeRun()
         {
@@ -18,11 +14,11 @@ namespace Playground
         protected override void Run()
         {
             Console.WriteLine("Started");
-
-            
-            Console.WriteLine("Done");
             Console.ReadLine();
-            Stop();
+            Console.WriteLine("Done");
+
+            base.DoIt();
+
         }
     }
 }
