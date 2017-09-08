@@ -1,37 +1,99 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System;
 
-namespace Cosmos.Core {
+using Cosmos.IL2CPU.API.Attribs;
+
+namespace Cosmos.Core
+{
     // Non hardware class, only used by core and hardware drivers for ports etc.
-    public class CPU {
+    public class CPU
+    {
         // Amount of RAM in MB's.
         // needs to be static, as Heap needs it before we can instantiate objects
-        public static uint GetAmountOfRAM() { return 0; } // Plugged
+        [PlugMethod(PlugRequired = true)]
+        public static uint GetAmountOfRAM()
+        {
+            throw new NotImplementedException();
+        }
+
         // needs to be static, as Heap needs it before we can instantiate objects
-        public static uint GetEndOfKernel() { return 0; } // Plugged
-        public void UpdateIDT(bool aEnableInterruptsImmediately) { } // Plugged
-        public void InitFloat() { } // Plugged
-        public static void ZeroFill(uint aStartAddress, uint aLength) { } // Plugged
-        public void Halt() { } // Plugged
+        [PlugMethod(PlugRequired = true)]
+        public static uint GetEndOfKernel()
+        {
+            throw new NotImplementedException();
+        }
 
-        public void Reboot() {
+        [PlugMethod(PlugRequired = true)]
+        public void UpdateIDT(bool aEnableInterruptsImmediately)
+        {
+            throw new NotImplementedException();
+        }
+
+        [PlugMethod(PlugRequired = true)]
+        public void InitFloat()
+        {
+            throw new NotImplementedException();
+        }
+
+        [PlugMethod(PlugRequired = true)]
+        public void InitSSE()
+        {
+            throw new NotImplementedException();
+        }
+
+        [PlugMethod(PlugRequired = true)]
+        public static void ZeroFill(uint aStartAddress, uint aLength)
+        {
+            throw new NotImplementedException();
+        }
+
+        [PlugMethod(PlugRequired = true)]
+        public void Halt()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Reboot()
+        {
             // Disable all interrupts
-            //DisableInterrupts();
+            DisableInterrupts();
 
-            //byte temp;
-
-            //// Clear all keyboard buffers
-            //do {
-            //    temp = CPUBus.Read8(0x64); // Empty user data
-            //    if ((temp & 0x01) != 0) {
-            //        CPUBus.Read8(0x60); // Empty keyboard data
-            //    }
-            //} while ((temp & 0x02) != 0);
-
-            //CPUBus.Write8(0x64, 0xFE); // Pulse CPU Reset line
+            var myPort = new IOPort(0x64);
+            while ((myPort.Byte & 0x02) != 0)
+            {
+            }
+            myPort.Byte = 0xFE;
             Halt(); // If it didn't work, Halt the CPU
+        }
+
+        private static void DoEnableInterrupts()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void DoDisableInterrupts()
+        {
+            throw new NotImplementedException();
+        }
+
+        [AsmMarker(AsmMarker.Type.Processor_IntsEnabled)]
+        public static bool mInterruptsEnabled;
+
+        public static void EnableInterrupts()
+        {
+            mInterruptsEnabled = true;
+            DoEnableInterrupts();
+        }
+
+        /// <summary>
+        /// Returns if the interrupts were actually enabled
+        /// </summary>
+        /// <returns></returns>
+        public static bool DisableInterrupts()
+        {
+            DoDisableInterrupts();
+            var xResult = mInterruptsEnabled;
+            mInterruptsEnabled = false;
+            return xResult;
         }
     }
 }

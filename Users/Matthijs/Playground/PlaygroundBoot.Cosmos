@@ -7,11 +7,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
     <Name>PlaygroundBoot</Name>
     <BinFormat>elf</BinFormat>
-    <SccProjectName>SAK</SccProjectName>
-    <SccProvider>SAK</SccProvider>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccLocalPath>SAK</SccLocalPath>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Profile>VMware</Profile>
@@ -98,23 +94,26 @@
     <CosmosDebugPort>Serial: COM1</CosmosDebugPort>
     <VMware_CosmosDebugPort>Serial: COM1</VMware_CosmosDebugPort>
     <USB_CosmosDebugPort>Serial: COM1</USB_CosmosDebugPort>
+    <ISO_CosmosDebugPort>Serial: COM1</ISO_CosmosDebugPort>
+    <EnableBochsDebug>True</EnableBochsDebug>
+    <Bochs_Name>PlaygroundBoot</Bochs_Name>
+    <Bochs_Description>Use Bochs emulator to deploy and debug.</Bochs_Description>
+    <Bochs_Deployment>ISO</Bochs_Deployment>
+    <Bochs_Launch>Bochs</Bochs_Launch>
+    <Bochs_DebugEnabled>False</Bochs_DebugEnabled>
+    <Bochs_StackCorruptionDetectionEnabled>False</Bochs_StackCorruptionDetectionEnabled>
+    <Bochs_DebugMode>Source</Bochs_DebugMode>
+    <Bochs_CosmosDebugPort>Serial: COM1</Bochs_CosmosDebugPort>
+    <Bochs_VisualStudioDebugPort>Pipe: Cosmos\Serial</Bochs_VisualStudioDebugPort>
+    <Bochs_VMwareEdition>Workstation</Bochs_VMwareEdition>
+    <Bochs_OutputPath>bin\Debug\</Bochs_OutputPath>
+    <Bochs_TraceAssemblies>All</Bochs_TraceAssemblies>
+    <Bochs_EnableGDB>False</Bochs_EnableGDB>
+    <Bochs_StartCosmosGDB>False</Bochs_StartCosmosGDB>
+    <Bochs_EnableBochsDebug>True</Bochs_EnableBochsDebug>
+    <VMware_EnableBochsDebug>True</VMware_EnableBochsDebug>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\source\Cosmos.Core.Plugs\Cosmos.Core.Plugs.csproj">
-      <Name>Cosmos.Core.Plugs</Name>
-      <Project>{d9a87aad-fcc9-4517-b31d-e904dad00784}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\source\Cosmos.Debug.Kernel.Plugs\Cosmos.Debug.Kernel.Plugs.csproj">
-      <Name>Cosmos.Debug.Kernel.Plugs</Name>
-      <Project>{b97a2956-c363-47f2-a6aa-b4fccff4d315}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\source\Cosmos.System.Plugs\Cosmos.System.Plugs.csproj">
-      <Name>Cosmos.System.Plugs</Name>
-      <Project>{7c64b97f-516d-4a6d-b9e1-3fe48f561409}</Project>
-      <Private>True</Private>
-    </ProjectReference>
     <ProjectReference Include="..\Playground\Playground.csproj">
       <Name>Playground</Name>
       <Project>{8e3537cb-d0f9-4cfb-ae6f-72b465ca03f6}</Project>

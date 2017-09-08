@@ -32,7 +32,8 @@ namespace Cosmos.VS.Windows
             InitializeComponent();
         }
 
-        private StreamWriter mOut = new StreamWriter(@"c:\data\sources\output.txt", false)
+        //private StreamWriter mOut = StreamWriter.Null;
+        private StreamWriter mOut = new StreamWriter(@"c:\data\output.txt", false)
                                     {
                                         AutoFlush = true
                                     };
@@ -55,7 +56,7 @@ namespace Cosmos.VS.Windows
                 //    textBox.Text += ("Command '" + aCommand + "' not recognized!\r\n");
             }
             //textBox.ScrollToEnd();
-            
+
         }
     }
 

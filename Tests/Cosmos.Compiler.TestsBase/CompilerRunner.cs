@@ -43,11 +43,13 @@ namespace Cosmos.Compiler.TestsBase
             {
                 throw new InvalidOperationException("No References specified!");
             }
-            DebugInfo.mLastGuid = 0;
+            
+            DebugInfo.SetRange(DebugInfo.AssemblerDebugSymbolsRange); 
             Console.WriteLine("Compiling to '{0}'", OutputFile);
             var xTask = new CompilerEngine();
             xTask.DebugEnabled = false;
             xTask.StackCorruptionDetectionEnabled = false;
+            xTask.StackCorruptionDetectionLevel = "MethodFooters";
             xTask.DebugMode = "Source";
             xTask.TraceAssemblies = "User";
             xTask.DebugCom = 1;

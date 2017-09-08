@@ -1,68 +1,199 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
+
 namespace Cosmos.Debug.Kernel {
     public class Debugger {
-        public Debugger(string aRing, string aSection) {
+        protected string mRing;
+
+        public string Ring {
+            get {
+                return mRing;
+            }
+            set {
+                mRing = value;
+            }
         }
 
-        public void Break() { } // Plugged
-        public unsafe void Send(int aLength, char* aText) { } // Plugged
-        //public void TraceOff() { } // Plugged
-        //public void TraceOn() { } // Plugged
-        public void SendPtr(object aObject) { } // plugged
+        protected string mSection { get; set; }
 
-        public unsafe void SendChannelCommand(byte aChannel, byte aCommand, byte[] aData)
-        {
-            fixed (byte* xPtr = &aData[0])
-            {
+        public Debugger(string aRing, string aSection) {
+            mRing = aRing;
+            mSection = aSection;
+        }
+
+        public void Break() {
+        } // Plugged
+
+        public static void DoBochsBreak() {
+            // plugged
+        }
+
+        internal static void DoRealHalt() {
+            // plugged
+        }
+
+        private static unsafe void ActualSend(int aLength, char* aText) {
+        } // Plugged
+
+        public void SendPtr(object aObject) {
+        } // plugged
+
+        internal static void DoSendNumber(uint aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendNumber(int aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendNumber(ulong aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendNumber(long aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendNumber(float aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendNumber(double aNumber) {
+            // plugged
+        }
+
+        internal static void DoSendCoreDump() {
+            // plugged
+        }
+
+        public void SendNumber(uint aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public void SendNumber(int aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public void SendNumber(ulong aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public void SendNumber(long aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public void SendNumber(float aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public void SendNumber(double aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        public unsafe void SendChannelCommand(byte aChannel, byte aCommand, byte[] aData) {
+            fixed (byte* xPtr = &aData[0]) {
                 SendChannelCommand(aChannel, aCommand, aData.Length, xPtr);
             }
         }
 
-        public static unsafe void SendChannelCommand(byte aChannel, byte aCommand, int aByteCount, byte* aData)
-        {
+        public static unsafe void SendChannelCommand(byte aChannel, byte aCommand, int aByteCount, byte* aData) {
             //
         }
 
-        public unsafe void Send(string aText) {
+        public static unsafe void SendChannelCommand(byte aChannel, byte aCommand) {
+            //
+        }
+
+        internal static void DoSend(string aText) {
+            // plugged
+        }
+
+        public static void SendKernelPanic(uint id) {
+            // plugged
+        }
+
+        public void Send(string aText) {
+            DoSend(aText);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(string aText) {
+            DoSend(aText);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(uint aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(int aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(ulong aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(long aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(float aNumber) {
+            DoSendNumber(aNumber);
+        }
+
+        [Conditional("COSMOSDEBUG")]
+        public void SendInternal(double aNumber) {
+            DoSendNumber(aNumber);
+        }
+        //public void OldSend(string aText) {
+        //    // TODO: Need to fix this so it can send empty strings.
+        //    // Sending empty strings locks it up right now
+        //    if (aText.Length == 0)
+        //    {
+        //        return;
+        //    }
+
+        //    var xChars = aText.ToCharArray();
+        //    fixed (char* xPtr = &xChars[0])
+        //    {
+        //        ActualSend(xChars.Length, xPtr);
+        //    }
+        //}
+
+        public unsafe void SendMessageBox(int aLength, char* aText) { } // Plugged
+        public unsafe void SendMessageBox(string aText) {
             // TODO: Need to fix this so it can send empty strings.
             // Sending empty strings locks it up right now
             if (aText.Length == 0) {
-              return;
-            }
-
-            var xChars = aText.ToCharArray();
-            fixed (char* xPtr = &xChars[0]) {
-                Send(xChars.Length, xPtr);
-            }
-        }
-
-        public unsafe void SendMessageBox(int aLength, char* aText) { } // Plugged
-        public unsafe void SendMessageBox(string aText)
-        {
-            // TODO: Need to fix this so it can send empty strings.
-            // Sending empty strings locks it up right now
-            if (aText.Length == 0)
-            {
                 return;
             }
 
             var xChars = aText.ToCharArray();
-            fixed (char* xPtr = &xChars[0])
-            {
+            fixed (char* xPtr = &xChars[0]) {
                 SendMessageBox(xChars.Length, xPtr);
             }
         }
 
         // TODO: Kudzu repacement methods for Cosmos.HAL.DebugUtil
         public unsafe void SendMessage(string aModule, string aData) {
-            string xSingleString;
-            xSingleString = "Message Module: \"" + aModule + "\"";
-            xSingleString += " Data: \"" + aData + "\"";
-            Send(xSingleString);
+            //string xSingleString;
+            //xSingleString = "Message Module: \"" + aModule + "\"";
+            //xSingleString += " Data: \"" + aData + "\"";
+            //Send(xSingleString);
+
+            DoSend("Message Module:");
+            DoSend(aModule);
+            DoSend("Data:");
+            DoSend(aData);
         }
 
         public unsafe void SendError(string aModule, string aData) {
@@ -234,6 +365,10 @@ namespace Cosmos.Debug.Kernel {
 
             //    addr = FromHex(s);
             //}
+        }
+
+        public void SendCoreDump() {
+            DoSendCoreDump();
         }
 
         private int FromHex(string p) {
